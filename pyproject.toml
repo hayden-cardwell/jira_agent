@@ -1,0 +1,13 @@
+[project]
+name = "jira-agent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "jira>=3.10.5",
+    "openai>=1.109.1",
+    "python-dotenv>=1.1.1",
+    "requests>=2.32.5",
+    "atlassian-python-api>=3.41.0",
+]
