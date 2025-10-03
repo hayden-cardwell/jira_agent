@@ -1,9 +1,6 @@
-from .templates import PromptTemplate
-from .ticket_analyzer import TicketAnalyzerPrompts
-from .confluence_search import ConfluenceSearchPrompts
+from .templates import PromptTemplate, load_prompt_values
 
 __all__ = [
     "PromptTemplate",
-    "TicketAnalyzerPrompts",
-    "ConfluenceSearchPrompts",
+    "load_prompt_values",
 ]

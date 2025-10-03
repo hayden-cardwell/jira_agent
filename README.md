@@ -59,6 +59,8 @@ Set the following in `.env` (see `env.example`):
 - OPENAI_API_KEY: API key for the LLM provider via the OpenAI SDK
 - OPENAI_BASE_URL: Base URL for the API (defaults to OpenAI if unset)
 - OPENAI_MODEL: Chat model name (default `gpt-5-mini-2025-08-07`)
+- PROMPT_TICKET_ANALYZER: Path to the ticket analyzer prompt file (plain text in `prompts/`)
+- PROMPT_CONFLUENCE_SEARCH: Path to the Confluence search prompt file (plain text in `prompts/`)
 
 - USE_STATIC_TICKETS: `true|false` to process bundled sample ticket(s)
 - POLL_INTERVAL_SECONDS: Polling interval for live mode (default 30)
@@ -77,11 +79,15 @@ Notes:
 │   ├── atlassian/jira.py           # JIRA client wrapper
 │   ├── atlassian/confluence.py     # Confluence client wrapper
 │   ├── agent/llm.py                # LLM provider abstraction
-│   └── prompts/                    # Prompt templates and examples
+│   └── prompts/                    # Prompt loaders
+├── prompts/                        # Editable prompt files (.prompt)
 ├── docs/SETUP.md                   # Detailed setup guide
 ├── env.example                     # Example environment configuration
 └── pyproject.toml                  # Dependencies and project config
 ```
+
+## Prompt customization
+Prompt text lives in `prompts/ticket_analyzer.prompt` and `prompts/confluence_search.prompt`. Update those files (or point the env vars `PROMPT_TICKET_ANALYZER` / `PROMPT_CONFLUENCE_SEARCH` at different paths) to change the system message, instructions, or few-shot examples. The agent requires these files at startup and will raise an error if they are missing or malformed.
 
 ## Example: verify connectivity (optional)
 ```bash

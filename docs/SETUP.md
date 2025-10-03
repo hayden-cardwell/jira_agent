@@ -148,6 +148,16 @@ For development and testing, create some sample data in your JIRA instance:
    JIRA_PROJECT_KEY=CSOPS
    ```
 
+### Prompt files
+Store editable prompt text in `prompts/` and point the agent at those files via `.env`:
+
+```ini
+PROMPT_TICKET_ANALYZER=./prompts/ticket_analyzer.prompt
+PROMPT_CONFLUENCE_SEARCH=./prompts/confluence_search.prompt
+```
+
+The agent requires these files when it starts. If you customize the prompts, edit the `.prompt` files directly or update the paths to alternate files.
+
 ### Runtime Settings (optional)
 
 These influence the live polling loop. Defaults are applied if unset.

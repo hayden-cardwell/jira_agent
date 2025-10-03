@@ -1,4 +1,6 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
+import os
+from pathlib import Path
 
 
 class PromptTemplate:
@@ -227,3 +229,89 @@ class PromptTemplate:
         )
 
         return messages
+
+
+def _parse_prompt_file(path: Path) -> Tuple[Dict[str, List[str]], List[Dict[str, str]]]:
+    """Parse a .prompt file into sections and few-shot messages.
+
+    The .prompt file format uses headings:
+      - "# system"
+      - "# instructions"
+      - "# few-shot" with message blocks introduced by lines starting with "> ROLE".
+    """
+    sections: Dict[str, List[str]] = {"system": [], "instructions": []}
+    messages: List[Dict[str, str]] = []
+    current_section: str | None = None
+    current_message: Dict[str, Any] | None = None
+
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.startswith("# "):
+            if current_section == "few-shot" and current_message:
+                messages.append(
+                    {
+                        "role": current_message["role"],
+                        "content": "\n".join(current_message["lines"]).strip(),
+                    }
+                )
+                current_message = None
+            current_section = line[2:].strip().lower()
+            continue
+
+        if current_section == "few-shot":
+            if line.startswith("> "):
+                if current_message:
+                    messages.append(
+                        {
+                            "role": current_message["role"],
+                            "content": "\n".join(current_message["lines"]).strip(),
+                        }
+                    )
+                current_message = {"role": line[2:].strip(), "lines": []}
+            elif current_message is not None:
+                current_message["lines"].append(line)
+            continue
+
+        if current_section in sections:
+            sections[current_section].append(line)
+
+    if current_section == "few-shot" and current_message:
+        messages.append(
+            {
+                "role": current_message["role"],
+                "content": "\n".join(current_message["lines"]).strip(),
+            }
+        )
+
+    return sections, messages
+
+
+def load_prompt_values(
+    env_var: str, default_filename: str
+) -> Tuple[str, str, List[Dict[str, str]]]:
+    """Load system prompt, instruction text, and few-shot examples for a prompt.
+
+    Args:
+        env_var: Environment variable name that can override the prompt file path.
+        default_filename: File name under the repository-level "prompts/" directory.
+
+    Returns:
+        Tuple of (system_text, instruction_text, few_shot_messages)
+    """
+    default_path = Path(__file__).resolve().parents[3] / "prompts" / default_filename
+    prompt_path = Path(os.environ.get(env_var) or default_path)
+
+    if not prompt_path.exists():
+        raise FileNotFoundError(f"Prompt file not found: {prompt_path}")
+
+    sections, messages = _parse_prompt_file(prompt_path)
+
+    system_text = "\n".join(sections.get("system", [])).strip()
+    instruction_text = "\n".join(sections.get("instructions", [])).strip()
+
+    if not system_text:
+        raise ValueError(f"System section is empty in prompt file: {prompt_path}")
+
+    if not instruction_text:
+        raise ValueError(f"Instructions section is empty in prompt file: {prompt_path}")
+
+    return system_text, instruction_text, messages

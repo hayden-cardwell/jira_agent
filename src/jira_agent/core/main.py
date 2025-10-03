@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from pprint import pprint
 from ..atlassian import jira, confluence
 from ..agent import llm
-from ..prompts import TicketAnalyzerPrompts, PromptTemplate, ConfluenceSearchPrompts
+from ..prompts import PromptTemplate, load_prompt_values
 
 
 # Configure logging
@@ -86,6 +86,7 @@ class JiraAgent:
         self.jira_service: Optional[jira.Client] = None
         self.confluence_service: Optional[confluence.Client] = None
         self.template: Optional[PromptTemplate] = None
+        self.ticket_analyzer_examples: Optional[List[Dict[str, str]]] = None
 
     def initialize(self) -> bool:
         """
@@ -131,11 +132,14 @@ class JiraAgent:
 
     def _initialize_template(self) -> None:
         """Initialize the prompt template."""
-        analyzer = TicketAnalyzerPrompts()
-        self.template = PromptTemplate(
-            system_prompt=analyzer.SYSTEM_PROMPT,
-            instruction_template=analyzer.ANALYSIS_INSTRUCTION,
+        system_prompt, instruction_text, examples = load_prompt_values(
+            env_var="PROMPT_TICKET_ANALYZER", default_filename="ticket_analyzer.prompt"
         )
+        self.template = PromptTemplate(
+            system_prompt=system_prompt,
+            instruction_template=instruction_text,
+        )
+        self.ticket_analyzer_examples = examples
         logger.debug("Prompt template initialized")
 
     def _initialize_confluence(self) -> None:
@@ -245,15 +249,18 @@ class JiraAgent:
 
     def _generate_search_queries(self, ticket_data: Dict[str, Any]) -> List[str]:
         """Generate search queries using LLM."""
-        search_prompts = ConfluenceSearchPrompts()
+        system_prompt, instruction_text, examples = load_prompt_values(
+            env_var="PROMPT_CONFLUENCE_SEARCH",
+            default_filename="confluence_search.prompt",
+        )
         search_template = PromptTemplate(
-            system_prompt=search_prompts.SYSTEM_PROMPT,
-            instruction_template=search_prompts.QUERY_GENERATION_INSTRUCTION,
+            system_prompt=system_prompt,
+            instruction_template=instruction_text,
         )
 
         formatted_messages = search_template.format_messages(
             ticket_data=ticket_data,
-            examples=search_prompts.FEW_SHOT_EXAMPLES,
+            examples=examples,
         )
 
         response = self.llm_service.generate_response(prompt=formatted_messages)
@@ -330,7 +337,7 @@ class JiraAgent:
             # Generate analysis using LLM
             formatted_messages = self.template.format_messages(
                 ticket_data=ticket_data,
-                examples=TicketAnalyzerPrompts.CORRECT_FEW_SHOT_EXAMPLES,
+                examples=self.ticket_analyzer_examples,
                 confluence_results=confluence_results,
             )
 
