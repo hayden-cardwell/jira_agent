@@ -22,9 +22,9 @@ class OpenAIProvider(LLMProvider):
     OpenAI provider implementation.
     """
 
-    def __init__(
-        self, api_key: str, base_url: str = None, model: str = "gpt-5-mini-2025-08-07"
-    ):
+    def __init__(self, api_key: str, base_url: str = None, model: str = None):
+        if model is None:
+            raise ValueError("model parameter is required")
         self.api_key = api_key
         self.base_url = base_url
         self.model = model
