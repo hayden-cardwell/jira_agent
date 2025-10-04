@@ -40,7 +40,8 @@ This tool runs as a background service that connects to your JIRA and Confluence
 #### Requirements
 - Python >= 3.10
 - UV (modern Python package manager)
-- API tokens for JIRA, Confluence, and OpenAI (or compatible LLM)
+- API tokens for JIRA and Confluence
+- LLM provider: OpenAI API key OR AWS Bedrock access
 
 #### Installation
 
@@ -82,11 +83,30 @@ The agent is configured through a `.env` file (copy from `env.example`). Here's 
 
 | Setting | What It Does | Example |
 |---------|--------------|---------|
-| `OPENAI_API_KEY` | API key for the AI model | `sk-proj-...` |
 | `JIRA_SERVER` | Your JIRA URL | `https://company.atlassian.net` |
 | `JIRA_EMAIL` | Your JIRA login email | `you@company.com` |
 | `JIRA_API_TOKEN` | JIRA API token | `ATATT3x...` |
 | `JIRA_PROJECT_KEY` | Which project to monitor | `CSOPS` |
+
+### LLM Provider (Required - Choose One)
+
+**Option A: OpenAI**
+
+| Setting | What It Does | Example |
+|---------|--------------|---------|
+| `LLM_PROVIDER` | Set to `openai` | `openai` |
+| `OPENAI_API_KEY` | API key for OpenAI | `sk-proj-...` |
+| `OPENAI_MODEL` | Which model to use | `gpt-4.1-2025-04-14` |
+
+**Option B: AWS Bedrock**
+
+| Setting | What It Does | Example |
+|---------|--------------|---------|
+| `LLM_PROVIDER` | Set to `bedrock` | `bedrock` |
+| `AWS_REGION` | AWS region for Bedrock | `us-east-1` |
+| `BEDROCK_INFERENCE_PROFILE` | Model inference profile | `us.anthropic.claude-3-5-haiku-20241022-v1:0` |
+
+**AWS Credentials**: Configure via environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`) or use AWS default credential chain (`~/.aws/credentials`, IAM roles, etc.)
 
 ### Confluence Integration (Optional)
 
@@ -113,8 +133,7 @@ The agent is configured through a `.env` file (copy from `env.example`). Here's 
 
 | Setting | What It Does | Default |
 |---------|--------------|---------|
-| `OPENAI_BASE_URL` | Use alternative LLM providers | OpenAI API |
-| `OPENAI_MODEL` | Which AI model to use | `gpt-4.1-2025-04-14` |
+| `OPENAI_BASE_URL` | Custom OpenAI-compatible endpoint | OpenAI API |
 | `PROMPT_TICKET_ANALYZER` | Custom analysis prompt | `ticket_analyzer.prompt` |
 | `PROMPT_CONFLUENCE_SEARCH` | Custom search prompt | `confluence_search.prompt` |
 
@@ -176,15 +195,43 @@ You can edit these files directly to:
 - Add domain-specific instructions
 - Include few-shot examples for better results
 
-### Using Alternative AI Models
+### Using Different AI Models
 
-The agent supports any OpenAI-compatible API:
-- OpenAI GPT models (default)
-- Azure OpenAI
-- Anthropic Claude (via compatibility layers)
-- Self-hosted models (Ollama, vLLM, etc.)
+The agent supports multiple LLM providers out of the box:
 
-Just configure `OPENAI_BASE_URL` and `OPENAI_MODEL` in your `.env` file.
+#### OpenAI (Default)
+```bash
+LLM_PROVIDER=openai
+OPENAI_API_KEY=sk-proj-...
+OPENAI_MODEL=gpt-4.1-2025-04-14
+```
+
+#### AWS Bedrock
+```bash
+LLM_PROVIDER=bedrock
+AWS_REGION=us-east-1
+BEDROCK_INFERENCE_PROFILE=us.anthropic.claude-3-5-sonnet-20241022-v2:0
+```
+
+**Available Bedrock Models** (system-defined inference profiles):
+- `us.anthropic.claude-3-5-sonnet-20241022-v2:0` - Claude 3.5 Sonnet v2 (recommended)
+- `us.anthropic.claude-3-5-haiku-20241022-v1:0` - Claude 3.5 Haiku (faster, cheaper)
+- `us.anthropic.claude-3-opus-20240229-v1:0` - Claude 3 Opus
+- Or use a custom inference profile ARN
+
+**AWS Setup Notes**:
+- You must request model access in the AWS Bedrock console before use
+- Configure AWS credentials via standard methods (environment variables, `~/.aws/credentials`, or IAM roles)
+- Requires `bedrock:InvokeModel` permission
+
+#### OpenAI-Compatible APIs
+For other providers (Azure OpenAI, Ollama, vLLM, etc.):
+```bash
+LLM_PROVIDER=openai
+OPENAI_BASE_URL=https://your-custom-endpoint/v1
+OPENAI_API_KEY=your-key
+OPENAI_MODEL=your-model-name
+```
 
 ---
 
@@ -212,6 +259,21 @@ uv run python -c "from dotenv import load_dotenv; load_dotenv(); print('Env load
 - Ensure `CONFLUENCE_SPACE_KEY` is correct
 - Verify API token has write access to the space
 - Check page titles match exactly (case-sensitive)
+
+**"BEDROCK_INFERENCE_PROFILE is required"**
+- Set `LLM_PROVIDER=bedrock` in your `.env` file
+- Add `BEDROCK_INFERENCE_PROFILE` with a valid inference profile ID
+- Example: `us.anthropic.claude-3-5-haiku-20241022-v1:0`
+
+**"ValidationException: Invocation of model ID ... isn't supported"**
+- You must use inference profiles with Bedrock (direct model IDs are deprecated)
+- Use system-defined profiles like `us.anthropic.claude-3-5-haiku-20241022-v1:0`
+- Or create a custom inference profile in the AWS Bedrock console
+
+**"AccessDeniedException" with Bedrock**
+- Request model access in the AWS Bedrock console (Model access → Manage model access)
+- Ensure your AWS credentials have `bedrock:InvokeModel` permission
+- Verify your AWS credentials are configured correctly
 
 For detailed troubleshooting, see `docs/SETUP.md`.
 

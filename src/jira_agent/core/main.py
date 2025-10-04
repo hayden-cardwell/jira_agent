@@ -43,9 +43,16 @@ class ServiceConfig:
     confluence_auto_submit: bool = False
 
     # LLM settings
+    llm_provider: str = "openai"
     openai_api_key: Optional[str] = None
     openai_base_url: Optional[str] = None
     openai_model: Optional[str] = None
+
+    # AWS Bedrock settings
+    aws_region: Optional[str] = None
+    aws_access_key_id: Optional[str] = None
+    aws_secret_access_key: Optional[str] = None
+    bedrock_inference_profile: Optional[str] = None
 
     # Runtime settings
     use_static_tickets: bool = False
@@ -67,9 +74,14 @@ class ServiceConfig:
             confluence_space=os.getenv("CONFLUENCE_SPACE_KEY"),
             confluence_auto_submit=os.getenv("CONFLUENCE_AUTO_SUBMIT", "false").lower()
             == "true",
+            llm_provider=os.getenv("LLM_PROVIDER", "openai").lower(),
             openai_api_key=os.getenv("OPENAI_API_KEY"),
             openai_base_url=os.getenv("OPENAI_BASE_URL"),
             openai_model=os.getenv("OPENAI_MODEL"),
+            aws_region=os.getenv("AWS_REGION"),
+            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+            bedrock_inference_profile=os.getenv("BEDROCK_INFERENCE_PROFILE"),
             use_static_tickets=os.getenv("USE_STATIC_TICKETS", "false").lower()
             == "true",
             poll_interval_seconds=int(os.getenv("POLL_INTERVAL_SECONDS", "30")),
@@ -119,16 +131,41 @@ class JiraAgent:
 
     def _initialize_llm(self) -> None:
         """Initialize the LLM service."""
-        if not self.config.openai_api_key:
-            raise ValueError("OPENAI_API_KEY is required")
+        if self.config.llm_provider == "bedrock":
+            # Initialize AWS Bedrock provider
+            if not self.config.aws_region:
+                raise ValueError(
+                    "AWS_REGION is required for Bedrock provider. "
+                    "Set it in your .env file."
+                )
+            if not self.config.bedrock_inference_profile:
+                raise ValueError(
+                    "BEDROCK_INFERENCE_PROFILE is required for Bedrock provider. "
+                    "Example: us.anthropic.claude-3-5-haiku-20241022-v1:0"
+                )
 
-        llm_provider = llm.OpenAIProvider(
-            api_key=self.config.openai_api_key,
-            base_url=self.config.openai_base_url,
-            model=self.config.openai_model or "gpt-4.1-2025-04-14",
-        )
+            llm_provider = llm.BedrockProvider(
+                region=self.config.aws_region,
+                inference_profile=self.config.bedrock_inference_profile,
+                access_key_id=self.config.aws_access_key_id,
+                secret_access_key=self.config.aws_secret_access_key,
+            )
+            logger.info(
+                f"LLM service initialized (Bedrock: {self.config.bedrock_inference_profile})"
+            )
+        else:
+            # Default to OpenAI provider
+            if not self.config.openai_api_key:
+                raise ValueError("OPENAI_API_KEY is required")
+
+            llm_provider = llm.OpenAIProvider(
+                api_key=self.config.openai_api_key,
+                base_url=self.config.openai_base_url,
+                model=self.config.openai_model or "gpt-4.1-2025-04-14",
+            )
+            logger.info("LLM service initialized (OpenAI)")
+
         self.llm_service = llm.LLM(provider=llm_provider)
-        logger.info("LLM service initialized")
 
     def _initialize_template(self) -> None:
         """Initialize the prompt template."""

@@ -70,6 +70,8 @@ uv --version
    - `jira`: Official JIRA Python client for API interactions
    - `requests`: HTTP library for making API requests
    - `python-dotenv`: Secure environment variable management
+   - `openai`: OpenAI Python client (also used for compatible APIs)
+   - `boto3`: AWS SDK for Python (for Bedrock support)
 
 3. **Verify Installation**:
 
@@ -171,16 +173,62 @@ LOOKBACK_MINUTES=300
 
 See the README Configuration section for the full list of supported variables (JIRA, Confluence, and LLM settings).
 
-### LLM settings
+### LLM Provider Settings
+
+The agent supports multiple LLM providers. Choose one:
+
+#### Option A: OpenAI (Default)
 
 ```ini
-# OpenAI-compatible credentials
+LLM_PROVIDER=openai
 OPENAI_API_KEY=your-openai-api-key
-# Optional: override base URL if using a compatible provider
-OPENAI_BASE_URL=https://api.openai.com/v1
-# Optional: model name (default gpt-4.1-2025-04-14)
 OPENAI_MODEL=gpt-4.1-2025-04-14
+# Optional: custom endpoint for OpenAI-compatible APIs
+OPENAI_BASE_URL=https://api.openai.com/v1
 ```
+
+#### Option B: AWS Bedrock
+
+```ini
+LLM_PROVIDER=bedrock
+AWS_REGION=us-east-1
+BEDROCK_INFERENCE_PROFILE=us.anthropic.claude-3-5-haiku-20241022-v1:0
+```
+
+**AWS Bedrock Setup**:
+
+1. **Request Model Access**:
+   - Go to the [AWS Bedrock Console](https://console.aws.amazon.com/bedrock)
+   - Navigate to "Model access" in the left sidebar
+   - Click "Manage model access"
+   - Enable access for Anthropic Claude models
+   - Wait for access to be granted (usually instant)
+
+2. **Configure AWS Credentials** (choose one method):
+   
+   **Method 1: Environment variables in .env**
+   ```ini
+   AWS_ACCESS_KEY_ID=your-access-key-id
+   AWS_SECRET_ACCESS_KEY=your-secret-access-key
+   ```
+   
+   **Method 2: AWS credentials file** (recommended)
+   ```bash
+   # Create/edit ~/.aws/credentials
+   [default]
+   aws_access_key_id = your-access-key-id
+   aws_secret_access_key = your-secret-access-key
+   ```
+   
+   **Method 3: IAM roles** (if running on AWS infrastructure)
+   - No additional configuration needed
+   - Ensure the role has `bedrock:InvokeModel` permission
+
+3. **Available Inference Profiles**:
+   - `us.anthropic.claude-3-5-sonnet-20241022-v2:0` - Most capable
+   - `us.anthropic.claude-3-5-haiku-20241022-v1:0` - Faster and cheaper
+   - `us.anthropic.claude-3-opus-20240229-v1:0` - Previous generation
+   - Or create custom inference profiles in the Bedrock console
 
 ## Verification
 
@@ -194,8 +242,18 @@ uv run main.py
 
 **Expected Output**:
 ```
-Successfully connected to JIRA: https://yourcompany.atlassian.net
-Logged in as: Your Display Name
+INFO - LLM service initialized (OpenAI)
+INFO - Confluence service initialized successfully
+INFO - Agent initialization complete
+INFO - Starting JIRA polling loop...
+```
+
+Or with Bedrock:
+```
+INFO - LLM service initialized (Bedrock: us.anthropic.claude-3-5-haiku-20241022-v1:0)
+INFO - Confluence service initialized successfully
+INFO - Agent initialization complete
+INFO - Starting JIRA polling loop...
 ```
 
 ### Test API Access
