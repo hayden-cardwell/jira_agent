@@ -164,7 +164,10 @@ JIRA Tickets → AI Analysis → Confluence Documentation
 .
 ├── main.py                         # Entry point
 ├── src/jira_agent/
-│   ├── core/main.py                # Agent orchestration and workflow
+│   ├── core/
+│   │   ├── main.py                 # Agent orchestration and workflow
+│   │   ├── config.py               # Configuration management
+│   │   └── confluence_handler.py   # Confluence business logic
 │   ├── atlassian/
 │   │   ├── jira.py                 # JIRA API integration
 │   │   └── confluence.py           # Confluence API integration
